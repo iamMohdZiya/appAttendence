@@ -1,0 +1,82 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Node Modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build Output
+dist/
+build/
+*.tsbuildinfo
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Package Manager Lock Files (optional - comment out if you want to commit)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# OS Files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Testing
+coverage/
+.nyc_output/
+
+# Vite
+.vite/
+vite-env.d.ts
+
+# Development
+.cache/
+
+# Temporary Files
+*.tmp
+*.bak
+*.log
+
+# OS Specific
+[Dd]esktop.ini
+.directory
+
+# WebStorm
+.idea/
+*.iml
+
+# Backend Specific
+backend/logs/
+backend/.DS_Store
+
+# Frontend Specific
+frontend/.DS_Store
+frontend/dist/
+frontend/build/
+
+# MongoDB
+mongod.log
