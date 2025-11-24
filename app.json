@@ -1,18 +1,8 @@
 {
   "expo": {
-    "name": "Attendance App",
-    "slug": "attendance-app",
+    "name": "Presenzo",
+    "slug": "presenzo-app",
     "version": "1.0.0",
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
-    "experiments": {
-      "tsconfigPaths": true
-    },
-    "plugins": [
-      "expo-barcode-scanner"
-    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -25,13 +15,37 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alphadevs.presenzo"
     },
     "android": {
+      "package": "com.alphadevs.presenzo", 
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-barcode-scanner",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Presenzo to access your camera."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Presenzo to use your location."
+        }
+      ]
+    ],
+    "experiments": {
+      "tsconfigPaths": true
     }
   }
 }
