@@ -45,15 +45,19 @@ export default function StudentDashboard({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Header Section */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcome}>Welcome,</Text>
-          <Text style={styles.nameText}>{studentName}</Text>
-        </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+   <View style={styles.header}>
+  <View>
+    <Text style={styles.welcome}>Welcome,</Text>
+    <Text style={styles.nameText}>{studentName}</Text>
+    {/* NEW PROFILE LINK */}
+    <TouchableOpacity onPress={() => navigation.navigate('ProfileScreen')}>
+      <Text style={{color: '#007AFF', fontSize: 12, marginTop: 2}}>Edit Profile</Text>
+    </TouchableOpacity>
+  </View>
+  <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+    <Text style={styles.logoutText}>Logout</Text>
+  </TouchableOpacity>
+</View>
 
       {/* History Button */}
       <TouchableOpacity 

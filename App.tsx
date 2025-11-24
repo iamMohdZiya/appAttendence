@@ -10,7 +10,7 @@ import StudentDashboard from './src/screens/Student/StudentDashboard';
 import ScanScreen from './src/screens/Student/ScanScreen';
 import HistoryScreen from './src/screens/Student/HistoryScreen';
 import FacultyReports from './src/screens/Faculty/FacultyReports';
-
+import ProfileScreen from './src/screens/common/ProfileScreen'
 
 const Stack = createStackNavigator();
 
@@ -25,6 +25,7 @@ export default function App() {
         <Stack.Screen name="ScanScreen" component={ScanScreen} />
         <Stack.Screen name="HistoryScreen" component={HistoryScreen} />
         <Stack.Screen name="FacultyReports" component={FacultyReports} />
+        <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

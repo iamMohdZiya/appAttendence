@@ -47,6 +47,9 @@ export default function FacultyDashboard({ navigation }) {
   <Text style={styles.reportBtnText}>View Reports</Text>
 </TouchableOpacity>
       </View>
+      <TouchableOpacity onPress={() => navigation.navigate('ProfileScreen')}>
+        <Text style={{color: '#007AFF', fontSize: 12, marginTop: 2}}>Edit Profile</Text>
+      </TouchableOpacity>
       
       <Text style={styles.title}>My Courses</Text>
       
