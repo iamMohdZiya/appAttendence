@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, TextInput, Alert, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import api from '../../services/api';
 
 export default function FacultyReports() {
   const [courses, setCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState(null); // Optional
-  const [startDate, setStartDate] = useState(''); // YYYY-MM-DD
-  const [endDate, setEndDate] = useState('');   // YYYY-MM-DD
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Set default dates (Today)
     const today = new Date().toISOString().split('T')[0];
     setStartDate(today);
     setEndDate(today);
@@ -67,111 +66,130 @@ export default function FacultyReports() {
     const fileUri = FileSystem.documentDirectory + fileName;
 
     try {
-      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri);
-      } else {
-        Alert.alert("Error", "Sharing is not available on this device");
       }
     } catch (error) {
       Alert.alert("Error", "Failed to save CSV");
-      console.log(error);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Faculty Reports</Text>
+    <View className="flex-1 bg-slate-50 px-6 pt-4">
       
-      {/* Date Inputs (Simple Text for now, can use DatePicker library if preferred) */}
-      <View style={styles.row}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Start (YYYY-MM-DD)</Text>
-          <TextInput style={styles.input} value={startDate} onChangeText={setStartDate} placeholder="2025-11-23" />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>End (YYYY-MM-DD)</Text>
-          <TextInput style={styles.input} value={endDate} onChangeText={setEndDate} placeholder="2025-11-23" />
-        </View>
+      {/* Header */}
+      <View className="mb-6">
+        <Text className="text-3xl font-black text-slate-800 tracking-tight">Reports</Text>
+        <Text className="text-slate-500 font-medium">Export detailed attendance logs</Text>
       </View>
 
-      {/* Course Filter Buttons */}
-      <Text style={styles.label}>Filter by Course (Optional):</Text>
-      <View style={{ height: 50, marginBottom: 10 }}>
-        <FlatList 
-          horizontal 
-          data={courses}
-          showsHorizontalScrollIndicator={false}
+      {/* --- FILTER CARD --- */}
+      <View className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 mb-6">
+        
+        <Text className="text-xs font-bold text-slate-400 uppercase mb-3 tracking-widest">Date Range</Text>
+        <View className="flex-row space-x-4 mb-5">
+          <View className="flex-1">
+            <Text className="text-[10px] text-slate-400 mb-1 ml-1">START DATE</Text>
+            <TextInput 
+              className="bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 font-medium"
+              value={startDate} 
+              onChangeText={setStartDate} 
+              placeholder="YYYY-MM-DD" 
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[10px] text-slate-400 mb-1 ml-1">END DATE</Text>
+            <TextInput 
+              className="bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 font-medium"
+              value={endDate} 
+              onChangeText={setEndDate} 
+              placeholder="YYYY-MM-DD" 
+            />
+          </View>
+        </View>
+
+        <Text className="text-xs font-bold text-slate-400 uppercase mb-3 tracking-widest">Select Course</Text>
+        <View className="h-12 mb-4">
+          <FlatList 
+            horizontal 
+            data={courses}
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={item => item._id}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                onPress={() => setSelectedCourse(selectedCourse?._id === item._id ? null : item)}
+                className={`mr-3 px-5 justify-center rounded-full border ${selectedCourse?._id === item._id ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-200'}`}
+              >
+                <Text className={`font-bold ${selectedCourse?._id === item._id ? 'text-white' : 'text-slate-600'}`}>
+                  {item.courseCode}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+
+        <TouchableOpacity 
+          className={`w-full py-4 rounded-2xl items-center ${loading ? 'bg-indigo-400' : 'bg-indigo-600'}`}
+          onPress={generateReport}
+          disabled={loading}
+        >
+          <Text className="text-white font-bold tracking-wide text-base">
+            {loading ? "Generating..." : "Generate Report"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* --- RESULTS LIST --- */}
+      <View className="flex-1">
+        <View className="flex-row justify-between items-end mb-3 px-1">
+          <Text className="text-slate-800 font-bold text-lg">Results</Text>
+          <Text className="text-slate-400 text-xs font-bold uppercase">{reportData.length} Records Found</Text>
+        </View>
+
+        <FlatList
+          data={reportData}
           keyExtractor={item => item._id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
           renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={[styles.courseChip, selectedCourse?._id === item._id && styles.selectedChip]}
-              onPress={() => setSelectedCourse(selectedCourse?._id === item._id ? null : item)}
-            >
-              <Text style={[styles.chipText, selectedCourse?._id === item._id && styles.selectedChipText]}>
-                {item.courseCode}
-              </Text>
-            </TouchableOpacity>
+            <View className="bg-white p-4 mb-3 rounded-2xl shadow-sm border border-slate-100 flex-row justify-between items-center">
+              <View className="flex-row items-center flex-1">
+                {/* Avatar Initial */}
+                <View className="h-10 w-10 rounded-full bg-indigo-50 items-center justify-center mr-3 border border-indigo-100">
+                  <Text className="text-indigo-600 font-bold text-sm">{item.student?.name?.charAt(0)}</Text>
+                </View>
+                
+                <View>
+                  <Text className="text-slate-800 font-bold text-base">{item.student?.name}</Text>
+                  <Text className="text-slate-400 text-xs font-mono">{item.student?.rollNo}</Text>
+                </View>
+              </View>
+
+              <View className="items-end">
+                <View className="bg-emerald-100 px-2 py-1 rounded-md mb-1">
+                  <Text className="text-emerald-700 text-[10px] font-bold uppercase tracking-wide">{item.status}</Text>
+                </View>
+                <Text className="text-slate-400 text-[10px]">{new Date(item.createdAt).toLocaleDateString()}</Text>
+              </View>
+            </View>
           )}
         />
       </View>
 
-      <TouchableOpacity style={styles.genButton} onPress={generateReport} disabled={loading}>
-        <Text style={styles.btnText}>{loading ? "Loading..." : "Show Present Students"}</Text>
-      </TouchableOpacity>
-
-      {/* Results List */}
-      <FlatList
-        data={reportData}
-        keyExtractor={item => item._id}
-        style={{ marginTop: 10 }}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View>
-              <Text style={styles.studentName}>{item.student?.name}</Text>
-              <Text style={styles.rollNo}>{item.student?.rollNo}</Text>
-            </View>
-            <View>
-              <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-              <Text style={styles.course}>{item.session?.course?.courseCode}</Text>
-            </View>
-          </View>
-        )}
-      />
-
-      {/* Download Button */}
+      {/* --- DOWNLOAD BUTTON (Floating) --- */}
       {reportData.length > 0 && (
-        <TouchableOpacity style={styles.downButton} onPress={downloadCSV}>
-          <Text style={styles.btnText}>Download CSV</Text>
-        </TouchableOpacity>
+        <View className="absolute bottom-8 left-6 right-6">
+          <TouchableOpacity 
+            className="w-full bg-emerald-600 py-4 rounded-2xl shadow-lg shadow-emerald-500/30 items-center flex-row justify-center space-x-2"
+            onPress={downloadCSV}
+          >
+            <Text className="text-white text-xl">📥</Text>
+            <Text className="text-white font-bold text-lg tracking-wide">Download CSV</Text>
+          </TouchableOpacity>
+        </View>
       )}
+
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f5f5f5' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, marginTop: 10 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  inputGroup: { width: '48%' },
-  label: { fontSize: 12, color: '#666', marginBottom: 5 },
-  input: { backgroundColor: 'white', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' },
-  
-  courseChip: { backgroundColor: '#e0e0e0', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginRight: 10, justifyContent:'center' },
-  selectedChip: { backgroundColor: '#007AFF' },
-  chipText: { color: '#333' },
-  selectedChipText: { color: 'white', fontWeight: 'bold' },
-
-  genButton: { backgroundColor: '#007AFF', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
-  downButton: { backgroundColor: '#28a745', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10, marginBottom: 20 },
-  btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-
-  card: { backgroundColor: 'white', padding: 15, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, elevation: 1 },
-  studentName: { fontSize: 16, fontWeight: '600' },
-  rollNo: { color: '#666', fontSize: 12 },
-  date: { fontSize: 12, color: '#333', textAlign: 'right' },
-  course: { fontSize: 12, fontWeight: 'bold', color: '#007AFF', textAlign: 'right' }
-});

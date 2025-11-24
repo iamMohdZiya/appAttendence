@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
 
@@ -51,89 +51,121 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.headerTitle}>My Profile</Text>
-
-      {/* READ ONLY FIELDS */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Academic Details (Read-Only)</Text>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"} 
+      className="flex-1 bg-slate-50"
+    >
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
         
-        <Text style={styles.label}>Role</Text>
-        <TextInput style={[styles.input, styles.readOnly]} value={userData.role?.toUpperCase()} editable={false} />
+        {/* Header */}
+        <View className="mb-8 mt-4">
+          <Text className="text-3xl font-black text-slate-800 tracking-tight">My Profile</Text>
+          <Text className="text-slate-500 font-medium">Manage your personal information</Text>
+        </View>
 
-        <Text style={styles.label}>Department</Text>
-        <TextInput style={[styles.input, styles.readOnly]} value={userData.dept || 'N/A'} editable={false} />
+        {/* --- READ ONLY SECTION --- */}
+        <View className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6">
+          <View className="flex-row items-center mb-5 border-b border-slate-50 pb-3">
+             <View className="h-2 w-2 rounded-full bg-slate-300 mr-2"></View>
+             <Text className="text-sm font-bold text-slate-400 uppercase tracking-widest">Academic Details</Text>
+          </View>
+          
+          <View className="space-y-4">
+            <View>
+              <Text className="text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Role</Text>
+              <View className="bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3">
+                <Text className="text-slate-500 font-bold">{userData.role?.toUpperCase()}</Text>
+              </View>
+            </View>
 
-        {userData.role === 'student' && (
-          <>
-            <Text style={styles.label}>Roll Number</Text>
-            <TextInput style={[styles.input, styles.readOnly]} value={userData.rollNo} editable={false} />
-          </>
-        )}
+            <View>
+              <Text className="text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Department</Text>
+              <View className="bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3">
+                <Text className="text-slate-500 font-medium">{userData.dept || 'N/A'}</Text>
+              </View>
+            </View>
 
-        {userData.role === 'faculty' && (
-          <>
-            <Text style={styles.label}>Staff ID</Text>
-            <TextInput style={[styles.input, styles.readOnly]} value={userData.staffId} editable={false} />
-          </>
-        )}
-      </View>
+            {userData.role === 'student' && (
+              <View>
+                <Text className="text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Roll Number</Text>
+                <View className="bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3">
+                  <Text className="text-slate-500 font-mono">{userData.rollNo}</Text>
+                </View>
+              </View>
+            )}
 
-      {/* EDITABLE FIELDS */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Personal Details</Text>
+            {userData.role === 'faculty' && (
+              <View>
+                <Text className="text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Staff ID</Text>
+                <View className="bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3">
+                  <Text className="text-slate-500 font-mono">{userData.staffId}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
 
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput 
-          style={styles.input} 
-          value={name} 
-          onChangeText={setName} 
-        />
+        {/* --- EDITABLE SECTION --- */}
+        <View className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6">
+          <View className="flex-row items-center mb-5 border-b border-slate-50 pb-3">
+             <View className="h-2 w-2 rounded-full bg-indigo-500 mr-2"></View>
+             <Text className="text-sm font-bold text-indigo-600 uppercase tracking-widest">Edit Details</Text>
+          </View>
 
-        <Text style={styles.label}>Email Address</Text>
-        <TextInput 
-          style={styles.input} 
-          value={email} 
-          onChangeText={setEmail} 
-          autoCapitalize="none"
-        />
+          <View className="space-y-5">
+            <View>
+              <Text className="text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Full Name</Text>
+              <TextInput 
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl px-4 py-3 text-base focus:border-indigo-500 focus:bg-white"
+                value={name} 
+                onChangeText={setName} 
+              />
+            </View>
 
-        <Text style={styles.label}>New Password (leave blank to keep current)</Text>
-        <TextInput 
-          style={styles.input} 
-          value={password} 
-          onChangeText={setPassword} 
-          placeholder="Enter new password"
-          secureTextEntry
-        />
-      </View>
+            <View>
+              <Text className="text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Email Address</Text>
+              <TextInput 
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl px-4 py-3 text-base focus:border-indigo-500 focus:bg-white"
+                value={email} 
+                onChangeText={setEmail} 
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleUpdate} disabled={loading}>
-        <Text style={styles.btnText}>{loading ? "Saving..." : "Update Profile"}</Text>
-      </TouchableOpacity>
+            <View>
+              <Text className="text-xs font-bold text-slate-400 uppercase mb-1 ml-1">New Password</Text>
+              <TextInput 
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl px-4 py-3 text-base focus:border-indigo-500 focus:bg-white"
+                value={password} 
+                onChangeText={setPassword} 
+                placeholder="Leave blank to keep current"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry
+              />
+            </View>
+          </View>
+        </View>
 
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>Go Back</Text>
-      </TouchableOpacity>
+        {/* --- ACTIONS --- */}
+        <TouchableOpacity 
+          className={`w-full py-4 rounded-2xl shadow-lg shadow-indigo-500/30 items-center mb-4 ${loading ? 'bg-indigo-400' : 'bg-indigo-600'}`}
+          onPress={handleUpdate}
+          disabled={loading}
+        >
+          <Text className="text-white font-bold text-lg tracking-wide">
+            {loading ? "Updating..." : "Save Changes"}
+          </Text>
+        </TouchableOpacity>
 
-    </ScrollView>
+        <TouchableOpacity 
+          className="w-full py-3 items-center"
+          onPress={() => navigation.goBack()}
+        >
+          <Text className="text-slate-400 font-bold">Cancel</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#f5f5f5', paddingBottom: 40 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333', marginTop: 30 },
-  
-  section: { marginBottom: 20 },
-  sectionLabel: { fontSize: 16, fontWeight: 'bold', color: '#007AFF', marginBottom: 10 },
-  
-  label: { fontSize: 12, color: '#666', marginBottom: 5, marginTop: 5 },
-  input: { backgroundColor: 'white', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', color: '#333' },
-  readOnly: { backgroundColor: '#e0e0e0', color: '#666', borderWidth: 0 },
-
-  saveButton: { backgroundColor: '#007AFF', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  
-  backButton: { marginTop: 15, alignItems: 'center' },
-  backText: { color: '#666' }
-});

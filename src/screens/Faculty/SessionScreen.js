@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, FlatList, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, TouchableOpacity, FlatList, StatusBar, SafeAreaView } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import api from '../../services/api';
 import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-
+import api from '../../services/api';
 
 export default function SessionScreen({ route, navigation }) {
   const { course } = route.params;
   const [sessionId, setSessionId] = useState(null);
   const [qrCode, setQrCode] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [attendees, setAttendees] = useState([]); // Store list of students
-  const [refreshInterval, setRefreshInterval] = useState(0); // Counter to force re-renders
+  const [attendees, setAttendees] = useState([]); 
+  
+  let timer; // QR Timer Reference
 
   // 1. Start Session on Mount
   useEffect(() => {
@@ -21,23 +21,19 @@ export default function SessionScreen({ route, navigation }) {
     return () => clearInterval(timer);
   }, []);
 
-  // 2. Poll for Updates (QR every 30s, Roster every 5s)
+  // 2. Poll for Updates (Roster every 5s)
   useEffect(() => {
     let rosterTimer;
     if (sessionId) {
-      // Fetch roster immediately
-      fetchRoster(sessionId);
-      // Then fetch every 5 seconds
+      fetchRoster(sessionId); // Immediate fetch
       rosterTimer = setInterval(() => fetchRoster(sessionId), 5000);
     }
     return () => clearInterval(rosterTimer);
   }, [sessionId]);
 
-  let timer; // QR Timer
-
- const startClassSession = async () => {
+  const startClassSession = async () => {
     try {
-      // 1. Get Faculty Location
+      // 1. Get Permissions
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Location is required to start a class.');
@@ -45,10 +41,10 @@ export default function SessionScreen({ route, navigation }) {
         return;
       }
 
-      // Get accurate location
+      // 2. Get Location
       let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
 
-      // 2. Send Lat/Lng to Backend
+      // 3. Send to Backend
       const { data } = await api.post('/session/start', {
         courseId: course._id,
         lat: location.coords.latitude,
@@ -59,6 +55,7 @@ export default function SessionScreen({ route, navigation }) {
       setQrCode(data.qrCode);
       setLoading(false);
 
+      // 4. Start Rotating QR
       timer = setInterval(() => refreshQR(data.sessionId), 30000);
 
     } catch (error) {
@@ -66,8 +63,27 @@ export default function SessionScreen({ route, navigation }) {
       Alert.alert('Error', 'Failed to start session.');
       navigation.goBack();
     }
+  };
+
+  const refreshQR = async (id) => {
+    try {
+      const { data } = await api.get(`/session/${id}/qr`);
+      setQrCode(data.code);
+    } catch (error) {
+      console.log("QR Refresh Failed");
+    }
+  };
+
+  const fetchRoster = async (id) => {
+    try {
+      const { data } = await api.get(`/attendance/session/${id}`);
+      setAttendees(data);
+    } catch (error) {
+      console.log("Roster fetch failed");
+    }
+  };
+
   const downloadSessionCSV = async () => {
-    // Filter only Present students from the current 'attendees' state
     const presentStudents = attendees.filter(a => a.status === 'Present');
     
     if (presentStudents.length === 0) {
@@ -94,159 +110,122 @@ export default function SessionScreen({ route, navigation }) {
     }
   };
 
-  const endSession = () => {
+  const handleEndSession = () => {
     clearInterval(timer);
-    
     Alert.alert(
-      "Session Ended",
+      "End Session?",
       `Total Present: ${attendees.filter(a => a.status === 'Present').length}`,
       [
-        { text: "Download Report", onPress: () => { downloadSessionCSV(); navigation.goBack(); } },
-        { text: "Close", onPress: () => navigation.goBack(), style: "cancel" }
+        { text: "Cancel", onPress: () => { 
+            // Restart timer if cancelled
+            timer = setInterval(() => refreshQR(sessionId), 30000); 
+          }, style: "cancel" 
+        },
+        { text: "End & Download", onPress: () => confirmEndSession() }
       ]
     );
   };
 
-};
-
-  const refreshQR = async (id) => {
+  const confirmEndSession = async () => {
     try {
-      const { data } = await api.get(`/session/${id}/qr`);
-      setQrCode(data.code);
-    } catch (error) {
-      console.log("QR Refresh Failed");
-    }
-  };
-
-  const fetchRoster = async (id) => {
-    try {
-      const { data } = await api.get(`/attendance/session/${id}`);
-      setAttendees(data);
-    } catch (error) {
-      console.log("Roster fetch failed");
-    }
-  };
-
- const endSession = async () => {
-    // 1. Stop local timer
-    clearInterval(timer);
-
-    try {
-      // 2. Tell Backend to close the session
       await api.post('/session/end', { sessionId });
-      
-      Alert.alert(
-        "Session Ended",
-        `Class marked as finished.\nTotal Present: ${attendees.filter(a => a.status === 'Present').length}`,
-        [
-          { text: "Download Report", onPress: () => { downloadSessionCSV(); navigation.goBack(); } },
-          { text: "Close", onPress: () => navigation.goBack(), style: "cancel" }
-        ]
-      );
+      downloadSessionCSV(); 
+      navigation.goBack();
     } catch (error) {
-      Alert.alert("Error", "Could not end session on server (Check internet).");
-      navigation.goBack(); // Navigate back anyway so they aren't stuck
+      Alert.alert("Error", "Could not close session on server.");
+      navigation.goBack();
     }
   };
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text>Starting Class...</Text>
+      <View className="flex-1 justify-center items-center bg-slate-50">
+        <ActivityIndicator size="large" color="#4f46e5" />
+        <Text className="text-slate-500 mt-4 font-medium">Initializing Location & Session...</Text>
       </View>
     );
   }
-  
 
   return (
-    <View style={styles.container}>
-      {/* Top Section: QR Code */}
-      <View style={styles.topSection}>
-        <Text style={styles.courseTitle}>{course.courseCode}</Text>
-        <View style={styles.qrWrapper}>
-          {qrCode && <QRCode value={qrCode} size={180} />}
+    <SafeAreaView className="flex-1 bg-slate-50">
+      <StatusBar barStyle="dark-content" />
+
+      {/* --- TOP SECTION: QR CARD --- */}
+      <View className="items-center pt-8 pb-8">
+        <Text className="text-2xl font-black text-slate-800 mb-6">{course.courseCode}</Text>
+        
+        {/* QR Wrapper with Shadow */}
+        <View className="bg-white p-6 rounded-3xl shadow-2xl shadow-indigo-200/50 border-4 border-white">
+          {qrCode && <QRCode value={qrCode} size={220} />}
         </View>
-        <Text style={styles.codeText}>Code: {qrCode}</Text>
+
+        <View className="mt-8 flex-row items-center bg-indigo-50 px-6 py-3 rounded-full">
+          <Text className="text-indigo-400 text-xs font-bold mr-2 uppercase tracking-widest">Current Code</Text>
+          <Text className="text-xl font-mono font-bold text-indigo-700 tracking-[0.2em]">
+            {qrCode}
+          </Text>
+        </View>
       </View>
 
-      {/* Bottom Section: Live Roster */}
-      <View style={styles.bottomSection}>
-        <Text style={styles.rosterTitle}>Live Attendees ({attendees.length})</Text>
+      {/* --- BOTTOM SECTION: LIVE ROSTER (Bottom Sheet Style) --- */}
+      <View className="flex-1 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] px-6 pt-8 overflow-hidden">
         
+        <View className="flex-row justify-between items-end mb-6 border-b border-slate-50 pb-4">
+          <View>
+            <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider">Realtime Updates</Text>
+            <Text className="text-2xl font-bold text-slate-800">Live Roster</Text>
+          </View>
+          <View className="bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+            <Text className="text-emerald-600 font-bold text-xs">
+              {attendees.length} Scanned
+            </Text>
+          </View>
+        </View>
+
         {attendees.length === 0 ? (
-          <Text style={styles.emptyText}>Waiting for scans...</Text>
+          <View className="flex-1 justify-center items-center opacity-40 mb-10">
+            <Text className="text-4xl mb-2">📡</Text>
+            <Text className="text-slate-500 font-medium">Waiting for students...</Text>
+          </View>
         ) : (
           <FlatList
             data={attendees}
             keyExtractor={(item) => item._id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
             renderItem={({ item }) => (
-              <View style={styles.studentRow}>
-                <View>
-                  <Text style={styles.studentName}>{item.student?.name || 'Unknown'}</Text>
-                  <Text style={styles.studentRoll}>{item.student?.rollNo || 'No Roll No'}</Text>
+              <View className="flex-row justify-between items-center py-3 border-b border-slate-50">
+                <View className="flex-row items-center">
+                  <View className="h-10 w-10 rounded-full bg-slate-100 items-center justify-center mr-3">
+                    <Text className="text-slate-500 font-bold">{item.student?.name?.charAt(0)}</Text>
+                  </View>
+                  <View>
+                    <Text className="text-slate-800 font-bold text-sm">{item.student?.name || 'Unknown'}</Text>
+                    <Text className="text-slate-400 text-xs font-mono">{item.student?.rollNo || 'No ID'}</Text>
+                  </View>
                 </View>
-                <View style={[
-                  styles.badge, 
-                  { backgroundColor: item.status === 'Present' ? '#4CAF50' : '#FFC107' }
-                ]}>
-                  <Text style={styles.badgeText}>{item.status}</Text>
+                
+                <View className={`px-3 py-1 rounded-full ${item.status === 'Present' ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+                  <Text className={`text-xs font-bold ${item.status === 'Present' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {item.status}
+                  </Text>
                 </View>
               </View>
             )}
           />
         )}
-      </View>
 
-      <TouchableOpacity style={styles.endButton} onPress={endSession}>
-        <Text style={styles.btnText}>End Session</Text>
-      </TouchableOpacity>
-    </View>
+        {/* End Session Floating Button */}
+        <View className="absolute bottom-8 left-6 right-6">
+          <TouchableOpacity 
+            onPress={handleEndSession}
+            className="bg-rose-500 w-full py-4 rounded-2xl shadow-lg shadow-rose-500/30 items-center flex-row justify-center space-x-2 active:bg-rose-600"
+          >
+            <Text className="text-white font-bold text-lg">End Session</Text>
+          </TouchableOpacity>
+        </View>
+
+      </View>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
-  topSection: { 
-    flex: 1.2, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    backgroundColor: '#fff', 
-    borderBottomLeftRadius: 30, 
-    borderBottomRightRadius: 30, 
-    paddingBottom: 20,
-    elevation: 5
-  },
-  courseTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 15, color: '#333' },
-  qrWrapper: { padding: 10, borderWidth: 4, borderColor: '#007AFF', borderRadius: 15 },
-  codeText: { fontSize: 18, marginTop: 10, fontWeight: 'bold', letterSpacing: 2, color: '#555' },
-
-  bottomSection: { flex: 1, padding: 20 },
-  rosterTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#444' },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 20, fontStyle: 'italic' },
-  
-  studentRow: { 
-    backgroundColor: 'white', 
-    padding: 12, 
-    borderRadius: 8, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 8 
-  },
-  studentName: { fontSize: 16, fontWeight: '600', color: '#333' },
-  studentRoll: { fontSize: 12, color: '#888' },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
-
-  endButton: { 
-    backgroundColor: '#D32F2F', 
-    padding: 15, 
-    margin: 20, 
-    borderRadius: 10, 
-    alignItems: 'center' 
-  },
-  btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
-});
