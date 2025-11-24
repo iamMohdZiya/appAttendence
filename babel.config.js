@@ -1,18 +1,14 @@
-module.exports = function(api) {
+module.exports = function (api) {
   api.cache(true);
-  let plugins = [];
-
-  
-
-  plugins.push('react-native-worklets/plugin');
 
   return {
-    
-      presets: [
-        ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
-        'nativewind/babel',
-      ],
-    
-    plugins,
+    presets: [
+      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
+      "nativewind/babel",
+    ],
+    plugins: [
+      // Reanimated plugin has to be listed LAST
+      "react-native-reanimated/plugin",
+    ],
   };
 };
