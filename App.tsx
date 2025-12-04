@@ -10,7 +10,7 @@ import StudentDashboard from './src/screens/Student/StudentDashboard';
 import ScanScreen from './src/screens/Student/ScanScreen';
 import HistoryScreen from './src/screens/Student/HistoryScreen';
 import FacultyReports from './src/screens/Faculty/FacultyReports';
-import ProfileScreen from './src/screens/common/ProfileScreen'
+import ProfileScreen from './src/screens/Common/ProfileScreen'
 import "./global.css" 
 const Stack = createStackNavigator();
 
